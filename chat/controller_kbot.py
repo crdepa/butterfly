@@ -17,8 +17,8 @@ class KbotController():
         global logger
         self.emb_model = None
         self.df_knowledge = {}
-        self.embeddings_title_colname = 'topic_name'
-        self.embeddings_content_colname = 'steps_text'
+        self.embeddings_title_colname = 'title'
+        self.embeddings_content_colname = 'Content'
         self.kb_path = "data/Triboo_knowledgebase.csv"
         self.emb_title_path = os.path.join('embeddings', 'embeddings_title.npy')
         self.emb_content_path = os.path.join('embeddings', 'embeddings_Content.npy')
