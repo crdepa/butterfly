@@ -20,9 +20,6 @@ class ChatAskViewSet(viewsets.ViewSet):
     input_text = request_data.get('input_text')
     if 'input_text' not in request_data:
         return Response('input_text field needed', status=500)
-    project = request_data.get('project')
-    if 'project' not in request_data:
-        return Response('project field needed', status=500)
 
     r = RedisSessionWrapper()
     session_key = request_data.get('session_key')
@@ -30,21 +27,50 @@ class ChatAskViewSet(viewsets.ViewSet):
     if session_key and not r.session_exists(session_key):
         return Response(f'session not found: {session_key}', status=500)
     if not session_key:
-        session_key, chat_data = r.create_new_session(project)
+        session_key, chat_data = r.create_new_session()
         # give this 'transaction' time to process?
     else:
         chat_data = r.get_data_from_session(session_key)
 
-    if chat_data.get('project') != project:
-        return Response('cannot change projects within a session', status=500)
-
-    ac = AskController(chat_data, request_data, session_key, project)
+    ac = AskController(chat_data, request_data, session_key)
     answer_data = ac.ask()
     r.update_session_data(session_key, chat_data)
 
     ret_dict = {
       'session_key': session_key,
       'response': answer_data,
+    }
+    if 'errors' in ret_dict['response']:
+        return Response(ret_dict, status=500)
+    else:
+        return Response(ret_dict)
+
+
+class ChatAskTestViewSet(viewsets.ViewSet):
+  def create(self, request):
+    request_data = request.data
+    input_text = request_data.get('input_text')
+    if 'input_text' not in request_data:
+        return Response('input_text field needed', status=500)
+
+    r = RedisSessionWrapper()
+    session_key = request_data.get('session_key')
+    chat_data = None
+    if session_key and not r.session_exists(session_key):
+        return Response(f'session not found: {session_key}', status=500)
+    if not session_key:
+        session_key, chat_data = r.create_new_session()
+        # give this 'transaction' time to process?
+    else:
+        chat_data = r.get_data_from_session(session_key)
+
+    #ac = AskController(chat_data, request_data, session_key, project)
+    #answer_data = ac.ask()
+    r.update_session_data(session_key, chat_data)
+
+    ret_dict = {
+      'session_key': session_key,
+      'response': "Test answer would be here"
     }
     if 'errors' in ret_dict['response']:
         return Response(ret_dict, status=500)

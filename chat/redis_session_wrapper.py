@@ -8,7 +8,7 @@ from traceback import format_exc
 import uuid
 
 
-SESSION_KEY_PREFIX = 'qelp_session_'
+SESSION_KEY_PREFIX = 'triboo_session_'
 MAX_SESSIONS_IN_LIST = 200
 
 logger = logging.getLogger(__name__)
@@ -50,12 +50,11 @@ class RedisSessionWrapper():
                 ret_dict[key] = x
         return ret_dict
 
-    def create_new_session(self, project):
-        session_key = SESSION_KEY_PREFIX + project + '_' + str(uuid.uuid4())
+    def create_new_session(self):
+        session_key = SESSION_KEY_PREFIX + '_' + str(uuid.uuid4())
         session_data = {
             'chat_history': [],
             'conversation_summary': '',
-            'project': project,
         }
         self.save_obj_to_redis(session_key, session_data)
         return session_key, session_data

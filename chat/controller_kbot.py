@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import euclidean_distances
 from sentence_transformers import SentenceTransformer, util
 
 
@@ -11,23 +13,15 @@ global logger
 logger = logging.getLogger(__name__)
 
 class KbotController():
-    def __init__(self, project, **kwargs):
+    def __init__(self, **kwargs):
         global logger
         self.emb_model = None
         self.df_knowledge = {}
-        self.project = project
-        self.language_name = 'en_UK'
         self.embeddings_title_colname = 'topic_name'
         self.embeddings_content_colname = 'steps_text'
-        if self.project == 'phone_support':
-            self.kb_path = "data/dataset_qelp_phone_support.csv"
-        elif self.project == 'tmobile':
-            self.kb_path = "data/dataset_qelp_tmobile.csv"
-        else:
-            raise Exception('cannot find knowledgebase file for project ' + self.project)
-        self.emb_title_path = os.path.join('embeddings', self.project, 'embeddings_title.npy')
-        self.emb_content_path = os.path.join('embeddings', self.project, 'embeddings_Content.npy')
-        self.emb_concat_path = os.path.join('embeddings', self.project, 'embeddings_concat_columns.npy')
+        self.kb_path = "data/Triboo_knowledgebase.csv"
+        self.emb_title_path = os.path.join('embeddings', 'embeddings_title.npy')
+        self.emb_content_path = os.path.join('embeddings', 'embeddings_Content.npy')
         if 'logger' in kwargs:
             logger = kwargs['logger']
         logger.info(f'kb path: {self.kb_path}')
@@ -42,7 +36,7 @@ class KbotController():
 #        return the_resp
 #
     def knowledgebase_has_changed(self):
-        klm_fullpath = self.get_last_modified_filename(self.kb_path, self.project)
+        klm_fullpath = self.get_last_modified_filename(self.kb_path)
         if os.path.isfile(klm_fullpath):
             return False
         else:
@@ -56,10 +50,10 @@ class KbotController():
         self.df_knowledge = df_knowledge
         logger.info(f'df knowledge headings are {list(self.df_knowledge)}')
 
-    def get_last_modified_filename(self, kb_path, project):
+    def get_last_modified_filename(self, kb_path):
         klm = int(os.path.getmtime(kb_path))
         klm_filename = 'last_modified_' + str(klm)
-        klm_fullpath = os.path.join('embeddings', project, klm_filename)
+        klm_fullpath = os.path.join('embeddings', klm_filename)
         return klm_fullpath
 
     def get_embeddings_title_and_content(self):
@@ -76,12 +70,7 @@ class KbotController():
                 self.df_knowledge[self.embeddings_content_colname])
             np.save(self.emb_title_path, np.array(embeddings_title))
             np.save(self.emb_content_path, np.array(embeddings_Content))
-            self.df_knowledge["combined"] = (
-              "Manufacturer: " + self.df_knowledge.manufacturer_label.str.strip() + "; Product: " + self.df_knowledge.product_name.str.strip()+ "; Topic: " + self.df_knowledge.topic_name.str.strip()+ "; OS: " + self.df_knowledge.os_name.str.strip()
-            )
-            embeddings_concat_columns = self.build_embedding_list(self.df_knowledge["combined"])
-            np.save(self.emb_concat_path, np.array(embeddings_concat_columns))
-            klm_filename = self.get_last_modified_filename(self.kb_path, self.project)
+            klm_filename = self.get_last_modified_filename(self.kb_path)
             Path(klm_filename).touch()
         else:
             embeddings_title = np.load(self.emb_title_path, allow_pickle= True).tolist()
@@ -89,10 +78,8 @@ class KbotController():
         return embeddings_title, embeddings_Content
 
     def get_embeddings_model(self):
-#        emb_model=SentenceTransformer(
-#            "all-mpnet-base-v2"
-#        )
-        self.emb_model = SentenceTransformer("./models/embedding_model")
+        self.emb_model = SentenceTransformer("all-mpnet-base-v2")
+#        self.emb_model = SentenceTransformer("./models/embedding_model")
 
     # Function to extract BERT embeddings for text as a list
     def calc_embeddings(self, some_text):
@@ -124,7 +111,7 @@ class KbotController():
 
        return outliers
 
-    def K_BOT(self, input_question, list_ids=''):
+    def K_BOT(self, input_question):
         embeddings_title, embeddings_Content = self.get_embeddings_title_and_content()
 
         pd.set_option('display.max_colwidth', 5000)
@@ -150,15 +137,17 @@ class KbotController():
 
         #Create df of potential answers
         print(f'POLLY {len(self.df_knowledge)}')
-        df_answers = self.df_knowledge[['id','language_name','manufacturer_label','os_name','product_name','topic_name','steps_text','cos_sim_max','cos_sim_log',]].sort_values(by=['cos_sim_max'], ascending = False).head(len(df_outliers['index']))
-        df_answers = df_answers[df_answers['language_name'] == self.language_name]
-        df_answers['steps_text'] = df_answers['steps_text'].str.replace('<[^<]+?>', '')
-        df_answers['steps_text'] = df_answers['steps_text'].str.replace("[", "")
-        df_answers['steps_text'] = df_answers['steps_text'].str.replace("]", "")
-        df_answers['steps_text'] = df_answers['steps_text'].str.replace("*", "")
+        df_answers = self.df_knowledge[['index','title','Content','cos_sim_max','cos_sim_log',]].sort_values(by=['cos_sim_max'], ascending = False).head(len(df_outliers['index']))
+    
+        # df_answers = self.df_knowledge[['id','language_name','manufacturer_label','os_name','product_name','topic_name','steps_text','cos_sim_max','cos_sim_log',]].sort_values(by=['cos_sim_max'], ascending = False).head(len(df_outliers['index']))
+        # df_answers = df_answers[df_answers['language_name'] == self.language_name]
+        # df_answers['steps_text'] = df_answers['steps_text'].str.replace('<[^<]+?>', '')
+        # df_answers['steps_text'] = df_answers['steps_text'].str.replace("[", "")
+        # df_answers['steps_text'] = df_answers['steps_text'].str.replace("]", "")
+        # df_answers['steps_text'] = df_answers['steps_text'].str.replace("*", "")
         #search_results = []
         #If GPT has compiled a list of relevant IDs (after initial user question) filter using this list, save tokens
-        if len(list_ids.split(',')) > 0:
-            df_answers[df_answers.id.isin(list_ids.split(','))]
+        # if len(list_ids.split(',')) > 0:
+        #     df_answers[df_answers.id.isin(list_ids.split(','))]
         
         return df_answers
