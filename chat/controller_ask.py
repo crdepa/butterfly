@@ -91,7 +91,7 @@ class AskController():
     def ask_triboo(self):
         self.get_history()
 #        conversation_summary = self.gpt_controller.create_summary_text(self.conversation_summary,self.input_txt, self.global_cost)      #returns conversation_summary
-#        search_txt = self.gpt_controller.create_search_text(self.conversation_summary, self.input_txt, self.global_cost)                 #returns search_txt
+        search_txt = self.gpt_controller.create_search_text(self.conversation_summary, self.input_txt, self.global_cost)                 #returns search_txt
         knowledge = self.gpt_controller.search_for_relevant_documents(search_txt)                           #returns knowledge
         kbot_reply = self.gpt_controller.respond_to_the_question(knowledge,self.conversation_summary, self.input_txt, self.global_cost)  #returns kbot_reply
 
@@ -102,6 +102,6 @@ class AskController():
         logger.info(f'Cost: ${self.global_cost[0]}')
 
         return {
-            'response_text': self.current_response_text,
+            'response_text': kbot_reply,
         }
 
