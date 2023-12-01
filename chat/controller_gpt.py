@@ -2,6 +2,8 @@ import logging
 import os
 import inspect
 
+from .controller_kbot import KbotController
+
 import openai
 openai.verify_ssl_certs = False
 
@@ -11,6 +13,7 @@ logger = logging.getLogger(__name__)
 #  chatGPT WILL time out on us some times, need to handle these kinds of conditions
 class GptController():
     def __init__(self):
+        self.kbot_controller = KbotController()
         api_key_path = os.path.join('keys', f'openai_key.txt')
         if not os.path.isfile(api_key_path):
             raise Exception(f'no openai api key found: {api_key_path}')
@@ -44,7 +47,7 @@ class GptController():
 
 
     def respond_to_the_question(self, knowledge,conversation_summary,input_txt, global_cost):
-      p_messages = [{'role': 'system', 'content' : "you are here to answer the question about the Triboo learning platform using the following user guide\n" + knowledge},
+      p_messages = [{'role': 'system', 'content' : "you are here to answer the question about the Triboo learning platform using the following user guide\n" + knowledge[:5000]},
                     {'role': 'user', 'content' : "what do you remember of the conversation so far"},
                     {'role': 'assistant', 'content' : conversation_summary},
                     {'role': 'user', 'content' : input_txt + "\nAnswer the question\nStick to answers from the user guide\nSeek confirmation or clarification"}
@@ -62,7 +65,7 @@ class GptController():
         {"role": "user", "content" : input_txt}
       ]
 
-      p_parameters = {'model':'gpt-3.5', 'temperature':0.1,'max_tokens':1000}
+      p_parameters = {'model':'gpt-3.5-turbo', 'temperature':0.1,'max_tokens':1000}
 
       conversation_summary = self.call_gpt(p_messages, p_parameters, global_cost)
 
@@ -76,7 +79,7 @@ class GptController():
                     {'role': 'user', 'content' : "Summarise the conversation into a list.\nKeep just the relevant facts\nDo not speculate"}                
                    ]
 
-      p_parameters = {'model':'gpt-3.5', 'temperature':0.1,'max_tokens':1000}
+      p_parameters = {'model':'gpt-3.5-turbo', 'temperature':0.1,'max_tokens':1000}
 
       conversation_summary = self.call_gpt(p_messages, p_parameters, global_cost)
 
@@ -127,7 +130,7 @@ class GptController():
       completion = openai.ChatCompletion.create(
         model="gpt-4", 
         temperature = 0.1,
-        max_tokens  = 500,
+        max_tokens  = 200,
         top_p=1,
         frequency_penalty = 1.5,
         presence_penalty  = 0.0,
